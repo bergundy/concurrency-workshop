@@ -1,0 +1,23 @@
+service mult
+{
+        disable         = no
+        id              = mult-single
+        port            = 55666
+        socket_type     = stream
+        protocol        = tcp
+        user            = root
+        wait            = no
+        server          = /app/mult.py
+}
+
+service multstream
+{
+        disable         = no
+        id              = mult-stream
+        port            = 55667
+        socket_type     = stream
+        protocol        = tcp
+        user            = root
+        wait            = no
+        server          = /app/mult_streamer.py
+}
