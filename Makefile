@@ -4,7 +4,7 @@ build: *.py Dockerfile
 
 start: build
 	if [ -e start ]; then make stop; fi
-	docker run -v ${PWD}:/app -p 8080:80 -p 55666:55666 -p 55667:55667 -d --privileged concurrency-workshop sh -c 'service xinetd start && service apache2 start && sleep infinity' > start
+	docker run -v ${PWD}:/app -p 8081:8081 -p 8080:80 -p 55666:55666 -p 55667:55667 -d --privileged concurrency-workshop sh -c 'service xinetd start && service apache2 start && sleep infinity' > start
 	while true; do curl http://localhost:8080/cgi-bin/mult.cgi?i=1 && exit; done &> /dev/null
 
 trace:
