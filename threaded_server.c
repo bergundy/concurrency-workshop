@@ -5,12 +5,9 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <unistd.h>
-#include <http_parser.h>
 #include <pthread.h>
-
-
-#define die(...) { fprintf(stderr, __VA_ARGS__); fflush(stderr); exit(1); }
-#define log(...) { fprintf(stderr, __VA_ARGS__); }
+#include <http_parser.h>
+#include "common.h"
 
 struct request_context {
     int fd;
@@ -19,8 +16,6 @@ struct request_context {
 
 int num_connected = 0;
 int num_handling = 0;
-
-const char *response_template = "HTTP/1.1 200 OK Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n%d";
 
 int on_url(http_parser *parser, const char *at, size_t length) {
     struct http_parser_url u = {0};
@@ -44,7 +39,7 @@ int on_message_complete(http_parser *parser) {
     /* log("Message complete\n"); */
     struct request_context *ctx = (struct request_context *)parser->data;
     char response[1024];
-    int result = ctx->i * 7;
+    int result = fib(ctx->i);
     sprintf(response, "%d", result);
     sprintf(response, response_template, strlen(response), result);
     send(ctx->fd, response, strlen(response), 0);
@@ -57,7 +52,8 @@ int noop_cb(http_parser *parser) { return 0; }
 int noop_data_cb(http_parser *parser, const char *at, size_t length) { return 0; }
 
 void *handle_client(void *client_fd_ptr) {
-    /* __sync_add_and_fetch(&num_connected, 1); */
+    /* int val = __sync_add_and_fetch(&num_connected, 1); */
+    /* log("Num connected: %d\n", val); */
     http_parser_settings settings =
         {.on_message_begin = on_message_begin
         ,.on_header_field = noop_data_cb
@@ -87,7 +83,7 @@ void *handle_client(void *client_fd_ptr) {
             goto closing;
         }
         if (recved < 0) {
-            perror("Client read failed");
+            /* perror("Client read failed"); */
             goto cleanup;
         }
 
@@ -105,40 +101,38 @@ void *handle_client(void *client_fd_ptr) {
 closing:
     err = close(client_fd);
     if (err != 0) {
-        log("Failed to close socket\n");
+        /* log("Failed to close socket\n"); */
     }
 
 cleanup:
     free(parser);
-    /* __sync_add_and_fetch(&num_connected, -1); */
-    /* log("Num connected: %d\n", num_connected); */
+    /* val = __sync_add_and_fetch(&num_connected, -1); */
+    /* log("Num connected: %d\n", val); */
     return NULL;
 }
 
 int main (int argc, char *argv[]) {
-    if (argc < 2) die("Usage: %s [port]\n", argv[0]);
-  
-    int port = atoi(argv[1]);
-  
+    int port = 8081;
+
     int server_fd, client_fd, err;
     struct sockaddr_in server, client;
-  
+
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) die("Could not create socket\n");
-  
+
     server.sin_family = AF_INET;
     server.sin_port = htons(port);
     server.sin_addr.s_addr = htonl(INADDR_ANY);
-  
+
     int opt_val = 1;
-    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof opt_val);
-  
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEPORT, &opt_val, sizeof opt_val);
+
     err = bind(server_fd, (struct sockaddr *) &server, sizeof(server));
     if (err < 0) die("Could not bind socket\n");
-  
+
     err = listen(server_fd, 1024);
     if (err < 0) die("Could not listen on socket\n");
-  
+
     printf("Server is listening on %d\n", port);
 
     pthread_attr_t attr;
@@ -150,7 +144,7 @@ int main (int argc, char *argv[]) {
     if (err != 0) {
         die("Failed to set pthread attr detached state");
     }
-  
+
     while (1) {
         socklen_t client_len = sizeof(client);
         client_fd = accept(server_fd, (struct sockaddr *) &client, &client_len);
@@ -163,6 +157,6 @@ int main (int argc, char *argv[]) {
         }
         /* handle_client(client_fd); */
     }
-  
+
     return 0;
 }

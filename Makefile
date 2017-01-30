@@ -4,7 +4,7 @@ build: *.py Dockerfile
 
 start: build
 	if [ -e start ]; then make stop; fi
-	docker run -v ${PWD}:/app --network host -d --privileged concurrency-workshop sh -c 'service xinetd start && service apache2 start && sleep infinity' > start
+	docker run -v ${PWD}:/app --ulimit nofile=262144:262144 -p 8081:8081 -p 8080:80 -p 55666:55666 -p 55667:55667 -d --privileged concurrency-workshop sh -c 'date -s "$(shell date)" && service xinetd start && service apache2 start && sleep infinity' > start
 	while true; do curl http://localhost:8080/cgi-bin/mult.cgi?i=1 && exit; done &> /dev/null
 
 trace:
@@ -27,3 +27,9 @@ test-inet-stream: start
 
 test-cgi: start
 	curl http://localhost:8080/cgi-bin/mult.cgi?i=1
+
+threaded_server:
+	gcc -std=c99 -o threaded_server -pthread threaded_server.c -lhttp_parser
+
+event_loop_server:
+	gcc -std=c99 -o event_loop_server event_loop_server.c -lhttp_parser
