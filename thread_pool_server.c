@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -120,7 +122,15 @@ void *thread_loop(void *data) {
 }
 
 int main (int argc, char *argv[]) {
+    int ncpus = 1;
+    int nthreads = 5000;
     int port = 8081;
+    if (argc >= 2) {
+        ncpus = atoi(argv[1]);
+    }
+    if (argc >= 3) {
+        nthreads = atoi(argv[2]);
+    }
 
     int server_fd, client_fd, err;
     struct sockaddr_in server, client;
@@ -155,11 +165,17 @@ int main (int argc, char *argv[]) {
 
     pipe_t* p = pipe_new(sizeof(int), 0);
     pthread_t t;
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    for (int c = 0; c < ncpus; ++c) {
+        CPU_SET(c, &cpuset);
+    }
 
     pipe_producer_t* producer = pipe_producer_new(p);
-    for (int x = 0; x < 10000; x++) {
+    for (int x = 0; x < nthreads; x++) {
         pipe_consumer_t *c = pipe_consumer_new(p);
         pthread_create(&t, &attr, thread_loop, c);
+        pthread_setaffinity_np(t, sizeof(cpu_set_t), &cpuset);
     }
 
     pipe_free(p);
