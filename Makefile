@@ -31,5 +31,8 @@ test-cgi: start
 threaded_server:
 	gcc -std=c99 -o threaded_server -pthread threaded_server.c -lhttp_parser
 
-event_loop_server:
+thread_pool_server: pipe.c thread_pool_server.c
+	gcc -std=c99 -o thread_pool_server -pthread thread_pool_server.c pipe.c -lhttp_parser
+
+event_loop_server: event_loop_server.c
 	gcc -std=c99 -o event_loop_server event_loop_server.c -lhttp_parser

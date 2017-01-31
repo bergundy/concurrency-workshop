@@ -3,3 +3,4 @@ start
 threaded_server
 event_loop_server
 go
+thread_pool_server
